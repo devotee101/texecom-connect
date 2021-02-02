@@ -48,7 +48,7 @@ class TexecomConnectMqtt(TexecomConnect):
     # Overload get_zone_details to publish zone information to MQTT
     def get_zone_details(self, zone_number):
         zone = super(TexecomConnectMqtt, self).get_zone_details(zone_number)
-        if zone.zoneType != self.ZONETYPE_UNUSED:
+        if zone is not None and zone.zoneType != self.ZONETYPE_UNUSED:
             if zone.zoneType == 1:
                 HAZoneType = "door"
             elif zone.zoneType == 8:
