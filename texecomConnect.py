@@ -364,7 +364,7 @@ class TexecomConnect(object):
     def connect(self):
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.s.settimeout(self.CMD_TIMEOUT)
-        self.s.connect((self.host, self.port))
+        self.s.connect((self.host, int(self.port)))
         # if we send the login message to fast the panel ignores it; texecom
         # recommend 500ms, see:
         # http://texecom.websitetoolbox.com/post/show_single_post?pid=1303528828&postcount=4&forum=627911
@@ -413,7 +413,7 @@ class TexecomConnect(object):
                     self.log("idle command failed; closing socket")
                     self.closesocket()
                     return None
-            header = self.s.recv(self.LENGTH_HEADER)
+            header=safe_rcv(self, self.LENGTH_HEADER)
             if self.print_network_traffic:
                 self.log("Received message header:")
                 hexdump.hexdump(header)
@@ -440,7 +440,7 @@ class TexecomConnect(object):
                 hexdump.hexdump(header)
                 return None
             expected_len = ord(msg_length) - self.LENGTH_HEADER
-            payload = self.s.recv(expected_len)
+            payload = safe_rcv(self, expected_len)
             if self.print_network_traffic:
                 self.log("Received message payload:")
                 hexdump.hexdump(payload)
@@ -987,6 +987,16 @@ def message_handler(payload):
             zone.active = True
         else:
             zone.active = False
+
+def safe_rcv(self, expected_len):
+    retries = self.CMD_RETRIES
+    data = self.s.recv(expected_len)
+    while retries > 0 and len(data) < expected_len:
+        retries -= 1
+        time.sleep(0.25 * (self.CMD_RETRIES - retries))
+        chunk = self.s.recv(expected_len - len(data))
+        data += chunk
+    return data
 
 # disable buffering to stdout when it's redirected to a file/pipe
 # This makes sure any events appear immediately in the file/pipe,
